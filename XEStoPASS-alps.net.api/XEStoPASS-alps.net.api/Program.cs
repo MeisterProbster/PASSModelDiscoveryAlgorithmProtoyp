@@ -19,7 +19,6 @@ namespace XEStoPASS_alps.net.api
     {
         static void Main(string[] args)
         {
-            //HelloGItHUb
             var file = File.OpenText("repairExampleCleansed.xes");
             var document = XDocument.Load(file);
 

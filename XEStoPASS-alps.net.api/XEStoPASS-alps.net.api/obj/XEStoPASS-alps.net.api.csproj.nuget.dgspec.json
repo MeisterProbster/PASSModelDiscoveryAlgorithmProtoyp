@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Flo\\source\\repos\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api.csproj": {}
+    "C:\\Users\\Flo\\Documents\\GitHub\\HelloWorld\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Flo\\source\\repos\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api.csproj": {
+    "C:\\Users\\Flo\\Documents\\GitHub\\HelloWorld\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Flo\\source\\repos\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api.csproj",
+        "projectUniqueName": "C:\\Users\\Flo\\Documents\\GitHub\\HelloWorld\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api.csproj",
         "projectName": "XEStoPASS-alps.net.api",
-        "projectPath": "C:\\Users\\Flo\\source\\repos\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api.csproj",
+        "projectPath": "C:\\Users\\Flo\\Documents\\GitHub\\HelloWorld\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api.csproj",
         "packagesPath": "C:\\Users\\Flo\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Flo\\source\\repos\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api\\obj\\",
+        "outputPath": "C:\\Users\\Flo\\Documents\\GitHub\\HelloWorld\\XEStoPASS-alps.net.api\\XEStoPASS-alps.net.api\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

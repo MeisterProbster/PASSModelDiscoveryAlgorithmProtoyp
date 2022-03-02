@@ -22,7 +22,7 @@ namespace XEStoPASS_alps.net.api
             var file = File.OpenText("repairExampleCleansed.xes");
             var document = XDocument.Load(file);
 
-            //top
+
 
             var log1 = XesEventLog.Parsen(document);
             var net = AlphaMiner.MinePetriNet(log1);

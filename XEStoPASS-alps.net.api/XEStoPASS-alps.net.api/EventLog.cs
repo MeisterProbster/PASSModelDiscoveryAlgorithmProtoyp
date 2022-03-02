@@ -7,7 +7,7 @@ using System.Xml.Linq;
 namespace XEStoPASS_alps.net.api
 {
     public class EventLog
-    {//super
+    {
         public IReadOnlyList<Trace> Traces { get; }
 
         public EventLog(IReadOnlyList<Trace> traces)

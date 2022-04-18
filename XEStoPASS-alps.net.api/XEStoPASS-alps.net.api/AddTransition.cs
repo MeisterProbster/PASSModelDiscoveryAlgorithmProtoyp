@@ -12,68 +12,28 @@ namespace XEStoPASS_alps.net.api
 {
     class AddTransition
     {
-       
-
-        public static void AddDoTransitionTo(IDoState sourceState, IState targetState)
+        public static IDoTransition AddDoTransitionTo(IDoState sourceState, IState targetState)
         {
             string transitionName = sourceState + " completed"; //Label oder ID? 
             IDoTransition transition = new DoTransition(sourceState, targetState, additionalLabel: transitionName);
+
+            return transition;
         }
 
-        public static void AddSendTransitionTo(ISendState sourceState, IState targetState)
+        public static ISendTransition AddSendTransitionTo(ISendState sourceState, IState targetState)
         {
             string transitionName = sourceState + " completed"; //Label oder ID? 
-            IDoTransition transition = new DoTransition(sourceState, targetState, additionalLabel: transitionName);
+            ISendTransition transition = new SendTransition(sourceState, targetState, additionalLabel: transitionName);
+
+            return transition;
         }
 
-        public static void AddReceiveTransitionTo(IReceiveState sourceState, IState targetState)
+        public static IReceiveTransition AddReceiveTransitionTo(IReceiveState sourceState, IState targetState)
         {
             string transitionName = "receive " + sourceState;
             IReceiveTransition transition = new ReceiveTransition(sourceState, targetState, additionalLabel: transitionName);
+
+            return transition;
         }
-
-
-
-        /*public static void AddDoToReceiveTransition(DoState sourceEvent, ReceiveState targetEvent)
-        {
-            string transitionName = sourceEvent.getModelComponentLabels().First() + " completed";
-            IDoTransition transition = new DoTransition(sourceEvent, targetEvent, additionalLabel: transitionName);
-        }
-
-        public static void AddSendToReceiveTransition(SendState sourceEvent, ReceiveState targetEvent)
-        {
-            string transitionName = sourceEvent + " send";
-            ISendTransition transition = new SendTransition(sourceEvent, targetEvent, additionalLabel: transitionName);
-        }
-
-        public static void AddSendToDoTransition(SendState sourceEvent, DoState targetEvent)
-        {
-            string transitionName = sourceEvent + " send";
-            ISendTransition transition = new SendTransition(sourceEvent, targetEvent, additionalLabel: transitionName);
-        }
-
-        public static void AddSendToSendTransition(SendState sourceEvent, SendState targetEvent)
-        {
-            string transitionName = sourceEvent + " send";
-            ISendTransition transition = new SendTransition(sourceEvent, targetEvent, additionalLabel: transitionName);
-        }
-
-        public static void AddReceiveToDoTransition(ReceiveState sourceEvent, DoState targetEvent)
-        {
-            string transitionName = "receive " + sourceEvent;
-            IReceiveTransition transition = new ReceiveTransition(sourceEvent, targetEvent, additionalLabel: transitionName);
-        }
-
-        public static void AddReceiveToSendTransition(ReceiveState sourceEvent, SendState targetEvent)
-        {
-            string transitionName = "receive " + sourceEvent;
-            IReceiveTransition transition = new ReceiveTransition(sourceEvent, targetEvent, additionalLabel: transitionName);
-        }
-
-        public static void AddReceiveToReceiveTransition(ReceiveState sourceEvent, ReceiveState targetEvent)
-        {
-            string transitionName = "receive " + sourceEvent;
-            IReceiveTransition transition = new ReceiveTransition(sourceEvent, targetEvent, additionalLabel: transitionName);
-        }*/
     }
 }

@@ -25,22 +25,29 @@ namespace XEStoPASS_alps.net.api
         public IFullySpecifiedSubject fullySpecified { get; set; }
         public ISubjectBehavior subjectBehavior { get; set; }
         public List<IDoState> DoStates { get; set; }
+        public List<List<List<IDoTransition>>> DoTransitions { get; set; }
         public List<List<ISendState>> SendStates { get; set; }
+        public List<List<List<ISendTransition>>> SendTransitions { get; set; }
         public List<List<IReceiveState>> ReceiveStates { get; set; }
+        public List<List<List<IReceiveTransition>>> ReceiveTransitions { get; set; }
+        public List<List<IDoState>> HilfsDoStates { get; set; }
+        public List<List<List<IDoTransition>>> HilfsDoTransitions { get; set; }
+        public List<List<IReceiveState>> ReceiveEndStates { get; set; }
+        public List<List<List<IReceiveTransition>>> ReceiveEndTransitions { get; set; }
+        public List<List<IDoState>> DoEndStates { get; set; }
+        public List<bool> Start { get; set; }
+        public List<bool> WiederholungsEnds { get; set; }
+        public List<bool> End { get; set; }
+        public bool StartSubject { get; set; }
+        public List<List<IMessageExchange>> MessageExchanges { get; set; }
         public List<List<string>> OrderList { get; set; }
         public List<List<string>> Next { get; set; }
         public List<List<string>> Previous { get; set; }
+        public List<List<IState>> EndStates { get; set; }
+        public List<List<IState>> StartStates { get; set; }
 
-        public Subject(string name)
-        {
-            Name = name;
-            Ressources = new List<Ressource>();
-            Events = new List<Event>();
-            Vorgänger = new List<List<Event>>();
-            Nachfolger = new List<List<Event>>();
-        }
 
-        public Subject(List<Ressource> ressources)
+        public Subject(List<Ressource> ressources) //1
         {
             //Namen zusammenführen
             string name = null;
@@ -109,114 +116,87 @@ namespace XEStoPASS_alps.net.api
             Nachfolger = nachfolger; 
         }
 
-        /// <summary>
-        /// Create new Subject
-        /// </summary>
-        /// <param name="ressource1"></param>
-        /// <param name="ressource2"></param>
-        public Subject(Ressource ressource1, Ressource ressource2)
+        public void EventReihenfolge(XDocument document1) //2
         {
-            this.Name = ressource1.Name + ressource2.Name;
-            //this.Ressources.Add(ressource1);
-            //this.Ressources.Add(ressource2);
 
-            for (int i = 0; i < ressource1.Events.Count; i++)
-            {
-                this.Events.Add(ressource1.Events[i]);
-            }
-            for (int i = 0; i < ressource2.Events.Count; i++)
-            {
-                if (!this.Events.Contains(ressource2.Events[i]))
-                {
-                    this.Events.Add(ressource2.Events[i]);
-                }
-            }
-
-            for (int i = 0; i < ressource1.EventNameList.Count; i++)
-            {
-                this.EventNames.Add(ressource1.EventNameList[i]);
-            }
-            for (int i = 0; i < ressource2.EventNameList.Count; i++)
-            {
-                if (!this.EventNames.Contains(ressource2.EventNameList[i]))
-                {
-                    this.EventNames.Add(ressource2.EventNameList[i]);
-                }
-            }
-
-            //Nachfolger- / Vorgängerlisten zu den jeweiligen Events adden
-            //auf Duplikate überprüfen
-            for (int i = 0; i < ressource1.Vorgänger.Count; i++)
-            {
-                this.Vorgänger.Add(ressource1.Vorgänger[i]);
-            }
-            for (int i = 0; i < ressource2.Vorgänger.Count; i++)
-            {
-                if (!this.Vorgänger.Contains(ressource2.Vorgänger[i]))
-                {
-                    this.Vorgänger.Add(ressource2.Vorgänger[i]);
-                }
-            }
-
-            for (int i = 0; i < ressource1.Nachfolger.Count; i++)
-            {
-                this.Nachfolger.Add(ressource1.Nachfolger[i]);
-            }
-            for (int i = 0; i < ressource2.Nachfolger.Count; i++)
-            {
-                if (!this.Nachfolger.Contains(ressource2.Nachfolger[i]))
-                {
-                    this.Nachfolger.Add(ressource2.Nachfolger[i]);
-                }
-            }
+            List<List<string>> orderList = ConfirmOrder(document1, this.EventNames);
+            OrderList = orderList;
         }
 
-        /// <summary>
-        /// Add new Resource 
-        /// </summary>
-        /// <param name="ressource"></param>
-        public void AddResource(Ressource ressource)
+        public List<List<string>> ConfirmOrder(XDocument document, List<string> essentielleEvents) //3
         {
-            this.Name = this.Name + ressource.Name;
-            this.Ressources.Add(ressource);
+            var traces = document.Root
+                .Elements("trace")
+                .Select(traceElement => traceElement
+                    .Elements("event")
+                    .Select(eventElement => new Event(
+                        tracename: traceElement.GetXesTracename("concept:name"),
+                        name: eventElement.GetXesAttribute("concept:name"),
+                        transition: eventElement.GetXesAttribute("lifecycle:transition"),
+                        timestamp: Convert.ToDateTime(eventElement.GetXesAttribute("time:timestamp")),
+                        resource: eventElement.GetXesAttribute("org:resource"))));
 
-            for (int i = 0; i < ressource.Events.Count; i++)
-            {
-                if (!this.Events.Contains(ressource.Events[i]))
-                {
-                    this.Events.Add(ressource.Events[i]);
-                }
-            }
-            for (int i = 0; i < ressource.EventNameList.Count; i++)
-            {
-                if (!this.EventNames.Contains(ressource.EventNameList[i]))
-                {
-                    this.EventNames.Add(ressource.EventNameList[i]);
-                }
-            }
+            var traces2 = new EventLog(traces.Select(trace => new Trace(trace.ToArray())).ToArray()).Traces;
 
-            //Nachfolger- / Vorgängerlisten zu den jeweiligen Events adden
-            //auf Duplikate überprüfen
-            for (int i = 0; i < ressource.Vorgänger.Count; i++)
-            {
-                if (!this.Vorgänger.Contains(ressource.Vorgänger[i]))
-                {
-                    this.Vorgänger.Add(ressource.Vorgänger[i]);
-                }
-            }
+            List<List<string>> orderList = new List<List<string>>();
+            //orderList.Add(essentielleEvents);
 
-            for (int i = 0; i < ressource.Nachfolger.Count; i++)
+            int q = 0;
+            foreach (Trace trace in traces2)
             {
-                if (!this.Nachfolger.Contains(ressource.Nachfolger[i]))
+                IReadOnlyList<Event> ev = trace.Events;
+                List<string> order = new List<string>();
+                int eventIndex = 0;
+                foreach (Event e in ev)
                 {
-                    this.Nachfolger.Add(ressource.Nachfolger[i]);
+                    if (essentielleEvents.Contains(e.Name))
+                    {
+                        if (!(e.Activity.Contains("+start")))
+                        {
+                            order.Add(e.Name);
+                        }
+                    }
+
+                    //Falls eines deiner Events das Erste im Trace ist, bist du ein Startsubject
+                    if (essentielleEvents.Contains(e.Name))
+                    {
+                        if (!(e.Activity.Contains("+start")))
+                        {
+                            if (eventIndex == 0)
+                            {
+                                StartSubject = true;
+                            }
+                        }
+                    }
+
+                    eventIndex++;
                 }
+                bool test = true;
+
+
+                for (int i = 0; i < orderList.Count(); i++)
+                {
+                    if (orderList[i].SequenceEqual(order))
+                    {
+                        test = false;
+                        break;
+                    }
+                }
+
+                if (test)
+                {
+                    orderList.Add(order);
+                }
+
+
+                q++;
             }
+            return orderList;
         }
 
         //Auch EventNameLsite durchlaufen
         //Laufe die Eventlisten ab, falls Namen gleich, führe zusammen und zwar so, dass Kombination von Subjekt + Event bei Nach/Vor nur einmal vorkommt
-        public void MergeSameEvents()
+        public void MergeSameEvents() //4
         {
             List<Event> eventList = new List<Event>();
             List<List<Event>> vorgänger = new List<List<Event>>();
@@ -256,148 +236,7 @@ namespace XEStoPASS_alps.net.api
             Events = eventList;
         }
 
-        public void EventReihenfolge(XDocument document1)
-        {
-
-            List<List<string>> orderList = ConfirmOrder(document1, this.EventNames);
-            OrderList = orderList;
-        }
-
-        public static List<List<string>> ConfirmOrder(XDocument document, List<string> essentielleEvents)
-        {
-            var traces = document.Root
-                .Elements("trace")
-                .Select(traceElement => traceElement
-                    .Elements("event")
-                    .Select(eventElement => new Event(
-                        tracename: traceElement.GetXesTracename("concept:name"),
-                        name: eventElement.GetXesAttribute("concept:name"),
-                        transition: eventElement.GetXesAttribute("lifecycle:transition"),
-                        timestamp: Convert.ToDateTime(eventElement.GetXesAttribute("time:timestamp")),
-                        resource: eventElement.GetXesAttribute("org:resource"))));
-
-            var traces2 = new EventLog(traces.Select(trace => new Trace(trace.ToArray())).ToArray()).Traces;
-
-            List<List<string>> orderList = new List<List<string>>();
-            orderList.Add(essentielleEvents);
-
-            int q = 0;
-            foreach (Trace trace in traces2)
-            {
-                IReadOnlyList<Event> ev = trace.Events;
-                List<string> order = new List<string>();
-                foreach (Event e in ev)
-                {
-                    if (essentielleEvents.Contains(e.Name))
-                    {
-                        if (!(e.Activity.Contains("+start")))
-                        {
-                            order.Add(e.Name);
-                        }
-                    }
-                }
-                bool test = true;
-
-                for (int i = 0; i < orderList.Count(); i++)
-                {
-                    if (orderList[i].SequenceEqual(order))
-                    {
-                        test = false;
-                        break;
-                    }
-                }
-
-                if (test)
-                {
-                    orderList.Add(order);
-                }
-                q++;
-            }
-            return orderList;
-        }
-
-        /*Durchlaufe alle Events mit Index
-         *      erstelle für jedes einen DoState
-         *          falls Nachfolger vorhanden und nicht vom gleichen Subjekt erstelle für jeden einen SendState
-         *          falls Vorgänger vorhanden und nicht vom gleichen Subjekt erstelle für einen ReceiveState, falls ein ReceiveState vorhanden erstelle keine weiteren mehr
-         *          
-         *          allevents und directlynextevents
-         *              alleventsdruchlaifen, falls mit meinem eventname übereinstimmr index bestimmen
-         *                  directlynextevtns an diesem INdex durhclaufen
-         *                      falls nur eins --> Send + Transition
-         *                      falls zwei und zweites enthält xor --> zwei Send mit je einer Tranition
-         *                      falls mehrere und kein xor --> für jedes ein Send und verbinden von do state zum ersten, dann vom ersten zum zweiten usw
-         *                      generell: eins oder mehrere?
-         *                      falls mehrere:  1.Nomral erstelle Send verbinde Send und vorgänger
-         *                                      2.Xor erstelle Send und verbinde Send und vorgänger von dem ersten normalen vor allen xors                                                           
-         *                                      3.Xor erstelle Send und verbinde Send und vorgänger von dem ersten normalen vor allen xors
-         *                                      4.Nomral erstelle Send und verbinde mit allen xor bis zu dem nächsten normalen vor dir
-         *                                      5.normal erstelle Send und verbinde mit dem vor dir
-         *                                      6.Xor erstelle Send und verbinde Send und vorgänger von dem ersten normalen vor allen xors 
-         */
-        public void CreateStates()
-        {
-            List<IDoState> doStates = new List<IDoState>();
-            List<List<IReceiveState>> receiveStates = new List<List<IReceiveState>>();
-            List<List<ISendState>> sendStates = new List<List<ISendState>>();
-
-            int i = 0;
-            foreach (Event e in Events)
-            {
-                IDoState doState = SupportFunctionsToAddStates.AddDoState(e.Name, subjectBehavior);
-                doStates.Add(doState);
-
-                if (true)//Next[i].Count() > 0)
-                {
-                    List<ISendState> sends = new List<ISendState>();
-                    sendStates.Add(sends);
-                    foreach (string name in Next[i])
-                    {
-                        ISendState sendState = SupportFunctionsToAddStates.SendState(e.Name, subjectBehavior);
-                        sends.Add(sendState);
-
-
-                        AddTransition.AddDoTransitionTo(doState, sendState);
-
-                        
-                    }
-
-                }
-
-                if (true)//Previous[i].Count() > 0)
-                {
-                    List<IReceiveState> receives = new List<IReceiveState>();
-                    receiveStates.Add(receives);
-
-                    for (int j = 0; j < Previous[i].Count(); j++)
-                    {
-                        if (j == 0)
-                        {
-                            IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(e.Name, Previous[i][j] , subjectBehavior);
-                            receives.Add(receiveState);
-                            AddTransition.AddReceiveTransitionTo(receiveState, doState);
-                        }
-                        else
-                        {
-                            AddTransition.AddReceiveTransitionTo(receiveStates[i][0], doState);
-                        }
-                    }
-                }
-                i++;
-            }
-
-            DoStates = doStates;
-            ReceiveStates = receiveStates;
-            SendStates = sendStates;
-        }
-
-        /* Durhclaufe allEvents
-         *      falls event vorhanden
-         *             bekomme Index
-         *             suche Nachfolger und Vorgänger in den Listen
-         *             trage sie in die NachfolgerVorgänger listen ein
-         */
-        public void PreviousNext(List<string> allEvents, List<List<string>> directlyPreviousToThisEvent, List<List<string>> directlyNextToThisEvent)
+        public void PreviousNext(List<string> allEvents, List<List<string>> directlyPreviousToThisEvent, List<List<string>> directlyNextToThisEvent) //5
         {
             List<List<string>> previous = new List<List<string>>();
             List<List<string>> next = new List<List<string>>();
@@ -425,7 +264,7 @@ namespace XEStoPASS_alps.net.api
                             }
                         }
                     }
-                    
+
                     if (!(index == directlyNextToThisEvent.Count()))
                     {
                         if (directlyNextToThisEvent[index].Count() > 0)
@@ -436,8 +275,8 @@ namespace XEStoPASS_alps.net.api
                             }
                         }
                     }
-                    
-                    
+
+
                 }
                 i++;
             }
@@ -445,30 +284,498 @@ namespace XEStoPASS_alps.net.api
             Previous = previous;
         }
 
-        /*richtige Reihenfolge der Do-State-Pakete --> OrderList
-         *      Durchlaufe für jedes Event die OrderList
-         *          lege eine Nachfolgerliste an
-         *              durhclaufe nochmals die Orderlisten
-         *                  Wenn ein Event auf mich folgt, dass noch nicht in Nachfolgerliste steht --> adde
-         *                  ansonsten mache nichts
-         *              wenn alle durlcaufen, haben wir alle möglich Nachfogler
-         *                  falls ich einen SendState habe
-         *                      verbinde eine Sendtransition von meinem Sendstate zu jedem Receive(falls vorhanden) oder DoState meiner NAchfolger
-         *                  falls ich kein SendState habe
-         *                      verbinde eine Dotransition von meinem Dostate zu jedem Receive(falls vorhanden) oder DoState meiner NAchfolger
-         */
-
-        public void DoStateGruppenVerbinden()
+        public void CreateStates() //6
         {
-            int i = 0;
-            foreach(Event ev in this.Events)
+            List<IDoState> doStates = new List<IDoState>();
+            List<List<IReceiveState>> receiveStates = new List<List<IReceiveState>>();
+            List<List<ISendState>> sendStates = new List<List<ISendState>>();
+            List<List<IDoState>> hilfsDoStates = new List<List<IDoState>>();
+
+            Start = new List<bool>();
+            End = new List<bool>();
+            ReceiveEndStates = new List<List<IReceiveState>>();
+            DoEndStates = new List<List<IDoState>>();
+            HilfsDoStates = new List<List<IDoState>>();
+
+            DoTransitions = new List<List<List<IDoTransition>>>();
+            SendTransitions = new List<List<List<ISendTransition>>>();
+            ReceiveTransitions = new List<List<List<IReceiveTransition>>>();
+            ReceiveEndTransitions = new List<List<List<IReceiveTransition>>>();
+            HilfsDoTransitions = new List<List<List<IDoTransition>>>();
+
+            int r = 0;
+            foreach (string s in this.EventNames)
             {
+                this.DoEndStates.Add(new List<IDoState>());
+                this.ReceiveEndStates.Add(new List<IReceiveState>());
+                this.HilfsDoStates.Add(new List<IDoState>());
+
+                this.SendTransitions.Add(new List<List<ISendTransition>>());
+                this.DoTransitions.Add(new List<List<IDoTransition>>());
+                this.ReceiveTransitions.Add(new List<List<IReceiveTransition>>());
+                this.ReceiveEndTransitions.Add(new List<List<IReceiveTransition>>());
+                this.HilfsDoTransitions.Add(new List<List<IDoTransition>>());
+
+                r++;
+            }
+
+
+            //Durchlaufe alle Events eines Subjektes
+            int i = 0;
+            foreach (Event e in Events)
+            {
+                //Erstelle für jedes Event einen Do-State
+                IDoState doState = SupportFunctionsToAddStates.AddDoState(e.Name, subjectBehavior);
+                doStates.Add(doState);
+
+                //Lege für dieses Event eine neue Liste SendStates an, in der alle SendStates von diesem Event gespeichert werden
+                List<ISendState> sends = new List<ISendState>();
+                sendStates.Add(sends);
+
+                //Lege für dieses Event eine neue Liste HilfsDoStates an, in der alle HilfsDoStates von diesem Event gespeichert werden
+                List<IDoState> hilfs = new List<IDoState>();
+                hilfsDoStates.Add(hilfs);
+
+                //falls das Event Nachfolger hat, durchlaufe diese
+                if (Next[i].Count() > 0)
+                {
+                    for (int j = 0; j < Next[i].Count(); j++)
+                    {
+                        string überprüfeName = Next[i][j].Replace("+complete", "");
+                        //Falls das nächste Event ein anderes Subjekt ist, erstelle SendState, ansonsten erstelle kein SendState
+                        if (!this.EventNames.Contains(überprüfeName))
+                        {
+                            //Falls das nächste Element nicht mit Xor startet und entweder das letze Element ist oder danach kein Xor kommt, erstelle ein "normales Send"
+                            if (!Next[i][j].StartsWith("xor+"))
+                            {
+                                if (j == Next[i].Count() - 1)
+                                {
+                                    //Falls SendStates vorhanden, verbinde das letzte mit mir, ansonsten verbinde den DoState mit mir
+                                    if (sends.Count() > 0)
+                                    {
+                                        ISendState sendState = SupportFunctionsToAddStates.SendState(e.Name, subjectBehavior);
+
+                                        //SendStates vorhanden und letztes ist kein xor --> verbinde das letzte mit dem neuen SendState
+                                        if (!sends.Last().getComments().Contains("xor@en"))
+                                        {
+                                            int letztes = sends.Count() - 1;
+                                            ISendTransition sendTransition = AddTransition.AddSendTransitionTo(sends[letztes], sendState);
+
+                                            SendTransitions[i].Add(new List<ISendTransition>());
+
+                                            SendTransitions[i].Last().Add(sendTransition);
+
+                                        }
+                                        //SendStates vorhanden und letztes ist xor --> verbinde alle letzten mit dem SendState
+                                        else if (sends.Last().getComments().Contains("xor@en"))
+                                        {
+                                            for (int f = sends.Count() - 1; f < SendStates[i].Count(); f--)
+                                            {
+                                                if (sends[f].getComments().Contains("xor@en"))
+                                                {
+                                                    ISendTransition sendTransition = AddTransition.AddSendTransitionTo(sends[f], sendState);
+
+                                                    SendTransitions[i].Add(new List<ISendTransition>());
+
+                                                    SendTransitions[i].Last().Add(sendTransition);
+                                                }
+                                                else
+                                                {
+                                                    ISendTransition sendTransition = AddTransition.AddSendTransitionTo(sends[f], sendState);
+
+                                                    SendTransitions[i].Add(new List<ISendTransition>());
+
+                                                    SendTransitions[i].Last().Add(sendTransition);
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                        sends.Add(sendState);
+                                    }
+                                    else
+                                    {
+                                        ISendState sendState = SupportFunctionsToAddStates.SendState(e.Name, subjectBehavior);
+                                        sends.Add(sendState);
+
+                                        IDoTransition doTransition = AddTransition.AddDoTransitionTo(doState, sendState);
+
+                                        DoTransitions[i].Add(new List<IDoTransition>());
+
+                                        DoTransitions[i].Last().Add(doTransition);
+                                    }
+                                }
+                                else if (!Next[i][j + 1].Contains("xor+"))
+                                {
+                                    //Falls SendStates vorhanden, verbinde das letzte mit mir, ansonsten verbinde den DoState mit mir
+                                    if (sends.Count() > 0)
+                                    {
+                                        ISendState sendState = SupportFunctionsToAddStates.SendState(e.Name, subjectBehavior);
+                                        sends.Add(sendState);
+
+                                        int vorletztes = sends.Count() - 1;
+                                        ISendTransition sendTransition = AddTransition.AddSendTransitionTo(sends[vorletztes], sendState);
+
+                                        SendTransitions[i].Add(new List<ISendTransition>());
+
+                                        SendTransitions[i].Last().Add(sendTransition);
+                                    }
+                                    else
+                                    {
+                                        ISendState sendState = SupportFunctionsToAddStates.SendState(e.Name, subjectBehavior);
+                                        sends.Add(sendState);
+
+                                        IDoTransition doTransition = AddTransition.AddDoTransitionTo(doState, sendState);
+
+                                        DoTransitions[i].Add(new List<IDoTransition>());
+
+                                        DoTransitions[i].Last().Add(doTransition);
+                                    }
+                                }
+                            }
+
+                            if (j + 1 < Next[i].Count())
+                            {
+                                if (!Next[i][j].StartsWith("xor+") && Next[i][j + 1].StartsWith("xor+"))
+                                {
+                                    //Füge HilfsState ein
+                                    IDoState supportDoState = SupportFunctionsToAddStates.AddDoState("supportDoState", subjectBehavior);
+
+                                    HilfsDoStates[i].Add(supportDoState);
+
+                                    //Falls SendStates vorhanden, verbinde das letzte mit mir, ansonsten verbinde den DoState mit mir
+                                    if (sends.Count() > 0)
+                                    {
+                                        //SendStates vorhanden und letztes ist kein xor --> verbinde das letzte mit dem neuen supportState
+                                        if (!sends.Last().getComments().Contains("xor@en"))
+                                        {
+                                            int letztes = sends.Count() - 1;
+                                            ISendTransition sendTransition = AddTransition.AddSendTransitionTo(sends[letztes], supportDoState);
+
+                                            SendTransitions[i].Add(new List<ISendTransition>());
+
+                                            SendTransitions[i].Last().Add(sendTransition);
+                                        }
+                                        //SendStates vorhanden und letztes ist xor --> verbinde alle letzten mit dem supportState
+                                        else if (sends.Last().getComments().Contains("xor@en"))
+                                        {
+                                            for (int f = sends.Count() - 1; f < SendStates[i].Count(); f--)
+                                            {
+                                                if (sends[f].getComments().Contains("xor@en"))
+                                                {
+                                                    ISendTransition sendTransition = AddTransition.AddSendTransitionTo(sends[f], supportDoState);
+
+                                                    SendTransitions[i].Add(new List<ISendTransition>());
+
+                                                    SendTransitions[i].Last().Add(sendTransition);
+                                                }
+                                                else
+                                                {
+                                                    ISendTransition sendTransition = AddTransition.AddSendTransitionTo(sends[f], supportDoState);
+
+                                                    SendTransitions[i].Add(new List<ISendTransition>());
+
+                                                    SendTransitions[i].Last().Add(sendTransition); ;
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        IDoTransition doTransition = AddTransition.AddDoTransitionTo(doState, supportDoState);
+
+                                        DoTransitions[i].Add(new List<IDoTransition>());
+
+                                        DoTransitions[i].Last().Add(doTransition);
+                                    }
+
+                                    //Erstelle einen SendState + Transiition von HilfsState zu SendState
+                                    ISendState sendState = SupportFunctionsToAddStates.SendState(e.Name, subjectBehavior);
+
+                                    sends.Add(sendState);
+
+                                    IDoTransition doTransition1 = AddTransition.AddDoTransitionTo(supportDoState, sendState);
+
+                                    HilfsDoTransitions[i].Add(new List<IDoTransition>());
+
+                                    HilfsDoTransitions[i].Last().Add(doTransition1);
+
+                                    int k;
+                                    //Für jedes folgende XorElement, erstelle einen SendState + Transiition von HilfsState zu SendState
+                                    for (k = j + 1; k < Next[i].Count(); k++)
+                                    {
+                                        if (Next[i][k].StartsWith("xor+"))
+                                        {
+                                            ISendState sendState1 = SupportFunctionsToAddStates.SendState(e.Name, subjectBehavior);
+                                            sendState1.addComment("xor");
+                                            sends.Add(sendState1);
+
+                                            IDoTransition doTransition = AddTransition.AddDoTransitionTo(supportDoState, sendState1);
+
+                                            HilfsDoTransitions[i].Add(new List<IDoTransition>());
+
+                                            HilfsDoTransitions[i].Last().Add(doTransition);
+                                        }
+                                        else
+                                        {
+                                            break;
+                                        }
+                                    }
+
+                                    //Setze den Counter von j ans Ende der XorListe
+                                    j = k;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                /*foreach (ISendState send in sends)
+                {
+                    SendTransitions[i].Add(new List<ISendTransition>());
+                }*/
+
+
+
+                if (sends.Count() > 0)
+                {
+                    //Falls es SendStates gibt und der letzte ein xor ist --> füge eine Hilfsvariable ein
+                    if (sends.Last().getComments().Contains("xor@en"))
+                    {
+                        //Füge HilfsState ein
+                        IDoState supportDoState = SupportFunctionsToAddStates.AddDoState("supportDoState", subjectBehavior);
+                        hilfs.Add(supportDoState);
+
+                        HilfsDoStates[i].Add(supportDoState);
+
+                        for (int f = sends.Count() - 1; f < sends.Count(); f--)
+                        {
+                            if (sends[f].getComments().Contains("xor@en"))
+                            {
+                                ISendTransition sendTransition = AddTransition.AddSendTransitionTo(sends[f], supportDoState);
+
+                                SendTransitions[i].Add(new List<ISendTransition>());
+
+                                SendTransitions[i].Last().Add(sendTransition);
+                            }
+                            else
+                            {
+                                ISendTransition sendTransition = AddTransition.AddSendTransitionTo(sends[f], supportDoState);
+
+                                SendTransitions[i].Add(new List<ISendTransition>());
+
+                                SendTransitions[i].Last().Add(sendTransition);
+                                break;
+                            }
+                        }
+                    }
+
+                    //Erstelle eine Nachfolgerliste von möglichen DoStateGruppenNachfolger
+                    List<string> EigenEventNachfolger = new List<string>();
+                    foreach (List<string> vs in OrderList)
+                    {
+                        if (vs.Contains(e.Name))
+                        {
+                            if (vs.IndexOf(e.Name) < vs.Count() - 1)
+                            {
+                                if (!EigenEventNachfolger.Contains(vs[vs.IndexOf(e.Name) + 1]))
+                                {
+                                    EigenEventNachfolger.Add(vs[vs.IndexOf(e.Name) + 1]);
+                                }
+
+                            }
+                        }
+                    }
+
+                    //Falls es SendStates gibt und der letzte normal ist, aber mehrere Nachfolger (evtl. Next?) exisitieren, dann füge eine Hilfsvariable ein
+                    if (EigenEventNachfolger.Count() > 1)
+                    {
+                        if (!sends.Last().getComments().Contains("xor@en"))
+                        {
+                            //Füge HilfsState ein
+                            IDoState supportDoState = SupportFunctionsToAddStates.AddDoState("supportDoState", subjectBehavior);
+                            hilfs.Add(supportDoState);
+
+                            HilfsDoStates[i].Add(supportDoState);
+
+                            ISendTransition sendTransition = AddTransition.AddSendTransitionTo(sends.Last(), supportDoState);
+
+                            SendTransitions[i].Add(new List<ISendTransition>());
+
+                            SendTransitions[i].Last().Add(sendTransition);
+                        }
+                    }
+                }
+
+
+
+                List<IReceiveState> receives = new List<IReceiveState>();
+                receiveStates.Add(receives);
+                //falls das Event Vorgänger hat, durchlaufe diese
+                if (Previous[i].Count() > 0)
+                {
+                    for (int j = 0; j < Previous[i].Count(); j++)
+                    {
+                        string überprüfeName = Previous[i][j].Replace("+complete", "");
+                        //Erstelle nur einen ReceiveState, wenn Vorgänger nicht vom gleichen Subjekt ist
+                        if (!this.EventNames.Contains(überprüfeName))
+                        {
+                            //Wenn ohne xor und falls nächstes existiert und nächstes auch ohne xor
+                            if (!Previous[i][j].StartsWith("xor+"))
+                            {
+                                if (j == Previous[i].Count() - 1)
+                                {
+                                    if (receives.Count() > 0)
+                                    {
+                                        IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(e.Name, Previous[i][j], subjectBehavior);
+                                        receives.Add(receiveState);
+
+                                        int vorletztes = receives.Count() - 1;
+                                        IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, receives[vorletztes]);
+
+                                        ReceiveTransitions[i].Add(new List<IReceiveTransition>());
+
+                                        ReceiveTransitions[i].Last().Add(receiveTransition);
+                                    }
+                                    else
+                                    {
+                                        IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(e.Name, Previous[i][j], subjectBehavior);
+                                        receives.Add(receiveState);
+
+                                        IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, doState);
+
+                                        ReceiveTransitions[i].Add(new List<IReceiveTransition>());
+
+                                        ReceiveTransitions[i].Last().Add(receiveTransition);
+                                    }
+                                }
+                                else if (!Previous[i][j + 1].Contains("xor+"))
+                                {
+                                    if (receives.Count() > 0)
+                                    {
+                                        IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(e.Name, Previous[i][j], subjectBehavior);
+                                        receives.Add(receiveState);
+
+                                        int vorletztes = receives.Count() - 1;
+                                        IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, receives[vorletztes]);
+
+                                        ReceiveTransitions[i].Add(new List<IReceiveTransition>());
+
+                                        ReceiveTransitions[i].Last().Add(receiveTransition);
+                                    }
+                                    else
+                                    {
+                                        IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(e.Name, Previous[i][j], subjectBehavior);
+                                        receives.Add(receiveState);
+
+                                        IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, doState);
+
+                                        ReceiveTransitions[i].Add(new List<IReceiveTransition>());
+
+                                        ReceiveTransitions[i].Last().Add(receiveTransition);
+                                    }
+                                }
+                            }
+
+                            //wenn nächstest exisitert und dieses ohne xor, aber nächstes mit
+                            if (j + 1 < Previous[i].Count())
+                            {
+                                if (!Previous[i][j].StartsWith("xor+") && Previous[i][j + 1].StartsWith("xor+"))
+                                {
+                                    if (receives.Count() > 0)
+                                    {
+                                        IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(e.Name, Previous[i][j], subjectBehavior);
+                                        receives.Add(receiveState);
+
+                                        int vorletztes = receives.Count() - 1;
+
+                                        IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, receives[vorletztes]);
+
+                                        ReceiveTransitions[i].Add(new List<IReceiveTransition>());
+
+                                        ReceiveTransitions[i].Last().Add(receiveTransition);
+
+                                        int k;
+                                        //Für jedes folgende XorElement, erstelle einen SendState + Transiition von HilfsState zu SendState
+                                        for (k = j + 1; k < Previous[i].Count(); k++)
+                                        {
+                                            if (Previous[i][k].StartsWith("xor+"))
+                                            {
+                                                IReceiveTransition receiveTransition1 = AddTransition.AddReceiveTransitionTo(receiveState, receives[vorletztes]);
+
+                                                ReceiveTransitions[i].Add(new List<IReceiveTransition>());
+
+                                                ReceiveTransitions[i].Last().Add(receiveTransition1);
+                                            }
+                                        }
+
+                                        //Setze den Counter von j ans Ende der XorListe
+                                        j = k;
+                                    }
+                                    else
+                                    {
+                                        IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(e.Name, Previous[i][j], subjectBehavior);
+                                        receives.Add(receiveState);
+
+                                        IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, doState);
+
+                                        ReceiveTransitions[i].Add(new List<IReceiveTransition>());
+
+                                        ReceiveTransitions[i].Last().Add(receiveTransition);
+
+                                        int k;
+                                        //Für jedes folgende XorElement, erstelle einen SendState + Transiition von HilfsState zu SendState
+                                        for (k = j + 1; k < Previous[i].Count(); k++)
+                                        {
+                                            if (Previous[i][k].StartsWith("xor+"))
+                                            {
+                                                IReceiveTransition receiveTransition1 = AddTransition.AddReceiveTransitionTo(receiveState, doState);
+
+                                                ReceiveTransitions[i].Add(new List<IReceiveTransition>());
+
+                                                ReceiveTransitions[i].Last().Add(receiveTransition1);
+                                            }
+                                            else
+                                            {
+                                                break;
+                                            }
+
+
+                                        }
+
+                                        //Setze den Counter von j ans Ende der XorListe
+                                        j = k;
+                                    }
+                                }
+                            }
+                        }
+
+                    }
+                }
+                i++;
+            }
+
+            DoStates = doStates;
+            ReceiveStates = receiveStates;
+            SendStates = sendStates;
+        }
+
+        public void DoStateGruppenVerbinden() //7
+        {
+            List<bool> wiederholungsEnds = new List<bool>();
+            int i = 0;
+            foreach (Event ev in this.Events)
+            {
+                //Erstelle die Nachfolgerliste der Events, um jede mögliche Reihenfolge der DoStateGruppen auslesen zu können
                 List<string> nachfolger = new List<string>();
+                bool endBool = false;
+                bool wiederholungsEndBool = false;
+                bool startBool = false;
                 foreach (List<string> vs in OrderList)
                 {
                     if (vs.Contains(ev.Name))
                     {
-                        if (!(vs.IndexOf(ev.Name) == vs.Count()-1))
+                        if (!(vs.IndexOf(ev.Name) == vs.Count() - 1))
                         {
                             int nachfolgerIndex = (vs.IndexOf(ev.Name)) + 1;
                             if (!nachfolger.Contains(vs[nachfolgerIndex]))
@@ -476,13 +783,108 @@ namespace XEStoPASS_alps.net.api
                                 nachfolger.Add(vs[nachfolgerIndex]);
                             }
                         }
-                    }
-                    else
-                    {
-                        //erstelle DoState mit Endfunktion
+                        //Starteigenschaft
+                        if (vs.IndexOf(ev.Name) == 0)
+                        {
+                            startBool = true;
+                        }
+                        //Ist Event letztes Event?
+                        if (ev.Name == vs.Last())
+                        {
+                            endBool = true;
+                            //Ist Event davor das gleiche Event, falls ja --> Wiederholung möglich
+                            if (vs.Count() > 1)
+                            {
+                                if (ev.Name == vs[vs.Count() - 2])
+                                {
+                                    wiederholungsEndBool = true;
+                                    endBool = false;
+                                    break;
+                                }
+                            }
+
+                        }
+
+                        //falls Wiederholung möglich, kontrolliere ob ReceiveState vorhanden, falls ja lege Kopie an und führe zurück zum DoState, ReceiveCopy wird EndState. Transitionen von Send oder DoState zu eigenem Receive nicht zulässig!
+
+
                     }
                 }
 
+                if (startBool)
+                {
+                    Start.Add(true);
+                }
+                else
+                {
+                    Start.Add(false);
+                }
+
+                if (endBool || wiederholungsEndBool)
+                {
+                    End.Add(true);
+                }
+                else
+                {
+                    End.Add(false);
+                }
+
+
+                //Falls kein ReceiveState vorhanden, dann nach Send/Do EndState einfügen, Transition zum eigenen DOState möglich
+                //Erstelle einen EndState, wenn: Event als letztes auftritt und keine Wiederholung des Events am Ende möglich ist verbinde mit letztem SendState oder DoState
+                if (endBool)
+                {
+                    if (SendStates[i].Count() > 0)
+                    {
+                        if (HilfsDoStates[i].Count() > 0)
+                        {
+                            IDoState EndState = SupportFunctionsToAddStates.AddDoState("End", this.subjectBehavior);
+
+                            DoEndStates[i].Add(EndState);
+
+                            IDoTransition doTransition = AddTransition.AddDoTransitionTo(HilfsDoStates[i].Last(), EndState);
+
+                            HilfsDoTransitions[i].Add(new List<IDoTransition>());
+
+                            HilfsDoTransitions[i].Last().Add(doTransition);
+                        }
+                        else
+                        {
+                            IDoState EndState = SupportFunctionsToAddStates.AddDoState("End", this.subjectBehavior);
+
+                            DoEndStates[i].Add(EndState);
+
+                            ISendTransition sendTransition = AddTransition.AddSendTransitionTo(SendStates[i].Last(), EndState);
+
+                            SendTransitions[i].Add(new List<ISendTransition>());
+
+                            SendTransitions[i].Last().Add(sendTransition);
+                        }
+                    }
+                    else
+                    {
+                        IDoState EndState = SupportFunctionsToAddStates.AddDoState("End", this.subjectBehavior);
+
+                        DoEndStates[i].Add(EndState);
+
+                        IDoTransition doTransition = AddTransition.AddDoTransitionTo(this.DoStates[i], EndState);
+
+                        DoTransitions[i].Add(new List<IDoTransition>());
+
+                        DoTransitions[i].Last().Add(doTransition);
+                    }
+
+                }
+
+                if (wiederholungsEndBool)
+                {
+                    wiederholungsEnds.Add(true);
+                    End[i] = true;
+                }
+                else
+                {
+                    wiederholungsEnds.Add(false);
+                }
 
                 foreach (string s in nachfolger)
                 {
@@ -492,41 +894,470 @@ namespace XEStoPASS_alps.net.api
                         {
                             int indexEvent = this.Events.IndexOf(@event);
 
-                            if (this.ReceiveStates[indexEvent].Count() > 0)
+                            if (this.Events[i].Name == s)
                             {
-                                if (this.SendStates[i].Count() > 0)
+                                //Es ist das gleiche Event
+                                if (wiederholungsEnds[i])
                                 {
-                                    foreach (SendState sendState in this.SendStates[i])
+                                    //Das Event ist ein WiederholungsEnde
+                                    if (ReceiveStates[i].Count() > 0)
                                     {
-                                        AddTransition.AddSendTransitionTo(sendState, this.ReceiveStates[indexEvent][0]);
+                                        //Das Event hat einen ReceiveState
+                                        //Erstelle für alle ReceiveStates und Transitionen eine Kopie
+                                        List<IReceiveState> receives = new List<IReceiveState>();
+                                        //falls das Event Vorgänger hat, durchlaufe diese
+                                        if (Previous[i].Count() > 0)
+                                        {
+                                            for (int j = 0; j < Previous[i].Count(); j++)
+                                            {
+                                                string überprüfeName = Previous[i][j].Replace("+complete", "");
+                                                //Erstelle nur einen ReceiveState, wenn Vorgänger nicht vom gleichen Subjekt ist
+                                                if (!this.EventNames.Contains(überprüfeName))
+                                                {
+                                                    //Wenn ohne xor und falls vorheriges existiert und nächstes auch ohne xor
+                                                    if (!Previous[i][j].StartsWith("xor+"))
+                                                    {
+                                                        if (j == Previous[i].Count() - 1)
+                                                        {
+                                                            if (receives.Count() > 0)
+                                                            {
+                                                                IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(Events[i].Name + " Copy", Previous[i][j], subjectBehavior);
+                                                                receives.Add(receiveState);
+
+                                                                ReceiveEndStates[i].Add(receiveState);
+
+                                                                int vorletztes = receives.Count() - 1;
+                                                                IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, receives[vorletztes]);
+
+                                                                ReceiveEndTransitions[i].Add(new List<IReceiveTransition>());
+
+                                                                ReceiveEndTransitions[i].Last().Add(receiveTransition);
+                                                            }
+                                                            else
+                                                            {
+                                                                IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(Events[i].Name + " Copy", Previous[i][j], subjectBehavior);
+                                                                receives.Add(receiveState);
+
+                                                                ReceiveEndStates[i].Add(receiveState);
+
+                                                                IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, DoStates[i]);
+
+                                                                ReceiveEndTransitions[i].Add(new List<IReceiveTransition>());
+
+                                                                ReceiveEndTransitions[i].Last().Add(receiveTransition);
+                                                            }
+                                                        }
+                                                        else if (!Previous[i][j + 1].Contains("xor+"))
+                                                        {
+                                                            if (receives.Count() > 0)
+                                                            {
+                                                                IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(Events[i].Name + " Copy", Previous[i][j], subjectBehavior);
+                                                                receives.Add(receiveState);
+
+                                                                ReceiveEndStates[i].Add(receiveState);
+
+                                                                int vorletztes = receives.Count() - 1;
+                                                                IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, receives[vorletztes]);
+
+                                                                ReceiveEndTransitions[i].Add(new List<IReceiveTransition>());
+
+                                                                ReceiveEndTransitions[i].Last().Add(receiveTransition);
+                                                            }
+                                                            else
+                                                            {
+                                                                IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(Events[i].Name + " Copy", Previous[i][j], subjectBehavior);
+                                                                receives.Add(receiveState);
+
+                                                                ReceiveEndStates[i].Add(receiveState);
+
+                                                                IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, DoStates[i]);
+
+                                                                ReceiveEndTransitions[i].Add(new List<IReceiveTransition>());
+
+                                                                ReceiveEndTransitions[i].Last().Add(receiveTransition);
+                                                            }
+                                                        }
+                                                    }
+
+                                                    //wenn vorheriges exisitert und dieses ohne xor, aber nächstes mit
+                                                    if (j + 1 < Previous[i].Count())
+                                                    {
+                                                        if (!Previous[i][j].StartsWith("xor+") && Previous[i][j + 1].StartsWith("xor+"))
+                                                        {
+                                                            if (receives.Count() > 0)
+                                                            {
+                                                                IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(Events[i].Name + " Copy", Previous[i][j], subjectBehavior);
+                                                                receives.Add(receiveState);
+
+                                                                ReceiveEndStates[i].Add(receiveState);
+
+                                                                int vorletztes = receives.Count() - 1;
+                                                                IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, receives[vorletztes]);
+
+                                                                ReceiveEndTransitions[i].Add(new List<IReceiveTransition>());
+
+                                                                ReceiveEndTransitions[i].Last().Add(receiveTransition);
+
+                                                                int k;
+                                                                //Für jedes folgende XorElement, erstelle einen SendState + Transiition von HilfsState zu SendState
+                                                                for (k = j + 1; k < Previous[i].Count(); k++)
+                                                                {
+                                                                    if (Previous[i][k].StartsWith("xor+"))
+                                                                    {
+                                                                        IReceiveTransition receiveTransition1 = AddTransition.AddReceiveTransitionTo(receiveState, receives[vorletztes]);
+
+                                                                        ReceiveEndTransitions[i].Add(new List<IReceiveTransition>());
+
+                                                                        ReceiveEndTransitions[i].Last().Add(receiveTransition1);
+                                                                    }
+                                                                }
+
+                                                                //Setze den Counter von j ans Ende der XorListe
+                                                                j = k;
+                                                            }
+                                                            else
+                                                            {
+                                                                IReceiveState receiveState = SupportFunctionsToAddStates.AddReceiveState(Events[i].Name + " Copy", Previous[i][j], subjectBehavior);
+                                                                receives.Add(receiveState);
+
+                                                                ReceiveEndStates[i].Add(receiveState);
+
+                                                                IReceiveTransition receiveTransition = AddTransition.AddReceiveTransitionTo(receiveState, DoStates[i]);
+
+                                                                ReceiveEndTransitions[i].Add(new List<IReceiveTransition>());
+
+                                                                ReceiveEndTransitions[i].Last().Add(receiveTransition);
+
+                                                                int k;
+                                                                //Für jedes folgende XorElement, erstelle einen SendState + Transiition von HilfsState zu SendState
+                                                                for (k = j + 1; k < Previous[i].Count(); k++)
+                                                                {
+                                                                    if (Previous[i][k].StartsWith("xor+"))
+                                                                    {
+                                                                        IReceiveTransition receiveTransition1 = AddTransition.AddReceiveTransitionTo(receiveState, DoStates[i]);
+
+                                                                        ReceiveEndTransitions[i].Add(new List<IReceiveTransition>());
+
+                                                                        ReceiveEndTransitions[i].Last().Add(receiveTransition1);
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        break;
+                                                                    }
+
+
+                                                                }
+
+                                                                //Setze den Counter von j ans Ende der XorListe
+                                                                j = k;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                            }
+                                        }
+
+                                        if (SendStates[i].Count() > 0)
+                                        {
+                                            //Das Event hat SendState(s)
+                                            if (HilfsDoStates[i].Count() > 0)
+                                            {
+                                                //Das Event hat als Abschluss einen HilfsDoState
+                                                IDoTransition doTransition = AddTransition.AddDoTransitionTo(HilfsDoStates[i].Last(), receives.Last());
+
+                                                HilfsDoTransitions[i].Add(new List<IDoTransition>());
+
+                                                HilfsDoTransitions[i].Last().Add(doTransition);
+
+                                                //receives.Last().EndState;
+                                            }
+                                            else
+                                            {
+                                                //Das Event hat als Abschluss einen SendState
+                                                ISendTransition sendTransition = AddTransition.AddSendTransitionTo(SendStates[i].Last(), receives.Last());
+
+                                                SendTransitions[i].Add(new List<ISendTransition>());
+
+                                                SendTransitions[i].Last().Add(sendTransition);
+
+                                                //receives.Last().EndState;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            //Das Event hat keine SendStates
+                                            IDoTransition doTransition = AddTransition.AddDoTransitionTo(DoStates[i], receives.Last());
+
+                                            DoTransitions[i].Add(new List<IDoTransition>());
+
+                                            DoTransitions[i].Last().Add(doTransition);
+
+                                            IDoState EndState = SupportFunctionsToAddStates.AddDoState("EndState", subjectBehavior);
+
+                                            DoEndStates[i].Add(EndState);
+                                            //EndState.EndState;
+
+                                            IDoTransition doTransition1 = AddTransition.AddDoTransitionTo(DoStates[i], EndState);
+
+                                            DoTransitions[i].Add(new List<IDoTransition>());
+
+                                            DoTransitions[i].Last().Add(doTransition1);
+                                        }
                                     }
-                                }
-                                else
-                                {
-                                    AddTransition.AddDoTransitionTo(this.DoStates[i], this.ReceiveStates[indexEvent][0]);
+                                    else
+                                    {
+                                        //Das Event hat keinen ReceiveState
+                                        if (SendStates[i].Count() > 0)
+                                        {
+                                            //Das Event hat SendState(s)
+                                            if (HilfsDoStates[i].Count() > 0)
+                                            {
+                                                //Das Event hat als Abschluss einen HilfsDoState
+                                                IDoState EndState = SupportFunctionsToAddStates.AddDoState("EndState", subjectBehavior);
+
+                                                DoEndStates[i].Add(EndState);
+
+                                                IDoTransition doTransition = AddTransition.AddDoTransitionTo(HilfsDoStates[i].Last(), EndState);
+                                                IDoTransition doTransition1 = AddTransition.AddDoTransitionTo(HilfsDoStates[i].Last(), DoStates[i]);
+
+                                                HilfsDoTransitions[i].Add(new List<IDoTransition>());
+
+                                                HilfsDoTransitions[i].Last().Add(doTransition);
+
+                                                HilfsDoTransitions[i].Add(new List<IDoTransition>());
+
+                                                HilfsDoTransitions[i].Last().Add(doTransition1);
+
+                                                //receives.Last().EndState;
+                                            }
+                                            else
+                                            {
+                                                //Das Event hat als Abschluss einen SendState
+
+                                                IDoState EndState = SupportFunctionsToAddStates.AddDoState("EndState", subjectBehavior);
+
+                                                DoEndStates[i].Add(EndState);
+
+                                                IDoState HilfsState = SupportFunctionsToAddStates.AddDoState("HilfsState", subjectBehavior);
+
+                                                HilfsDoStates[i].Add(HilfsState);
+
+                                                ISendTransition sendTransition = AddTransition.AddSendTransitionTo(SendStates[i].Last(), HilfsState);
+
+                                                SendTransitions[i].Add(new List<ISendTransition>());
+
+                                                SendTransitions[i].Last().Add(sendTransition);
+
+                                                IDoTransition doTransition = AddTransition.AddDoTransitionTo(HilfsState, EndState);
+                                                IDoTransition doTransition1 = AddTransition.AddDoTransitionTo(HilfsState, DoStates[i]);
+
+                                                HilfsDoTransitions[i].Add(new List<IDoTransition>());
+
+                                                HilfsDoTransitions[i].Last().Add(doTransition);
+
+                                                HilfsDoTransitions[i].Add(new List<IDoTransition>());
+
+                                                HilfsDoTransitions[i].Last().Add(doTransition1);
+                                                //receives.Last().EndState;
+                                            }
+                                        }
+                                        else
+                                        {
+                                            //Das Event hat keine SendStates
+                                            IDoTransition doTransition = AddTransition.AddDoTransitionTo(DoStates[i], DoStates[i]);
+
+                                            DoTransitions[i].Add(new List<IDoTransition>());
+
+                                            DoTransitions[i].Last().Add(doTransition);
+
+                                            IDoState EndState = SupportFunctionsToAddStates.AddDoState("EndState", subjectBehavior);
+
+                                            DoEndStates[i].Add(EndState);
+                                            //EndState.EndState;
+
+                                            IDoTransition doTransition1 = AddTransition.AddDoTransitionTo(DoStates[i], EndState);
+
+                                            DoTransitions[i].Add(new List<IDoTransition>());
+
+                                            DoTransitions[i].Last().Add(doTransition1);
+                                        }
+                                    }
                                 }
                             }
-                            else
+
+                            if (!wiederholungsEnds[i])
                             {
-                                if (this.SendStates[i].Count() > 0)
+                                //Empfänger hat einen ReceiveState
+                                if (this.ReceiveStates[indexEvent].Count() > 0)
                                 {
-                                    foreach (SendState sendState in this.SendStates[i])
+                                    if (this.SendStates[i].Count() > 0)
                                     {
-                                        AddTransition.AddSendTransitionTo(sendState, this.DoStates[indexEvent]);
+                                        //Das Event hat SendState(s)
+                                        if (HilfsDoStates[i].Count() > 0)
+                                        {
+                                            //Das Event hat als Abschluss einen HilfsDoState
+                                            IDoTransition doTransition = AddTransition.AddDoTransitionTo(HilfsDoStates[i].Last(), this.ReceiveStates[indexEvent].Last());
+
+                                            HilfsDoTransitions[i].Add(new List<IDoTransition>());
+
+                                            HilfsDoTransitions[i].Last().Add(doTransition);
+
+                                        }
+                                        else
+                                        {
+                                            //Das Event hat als Abschluss einen SendState
+                                            ISendTransition sendTransition = AddTransition.AddSendTransitionTo(SendStates[i].Last(), this.ReceiveStates[indexEvent].Last());
+
+                                            SendTransitions[i].Add(new List<ISendTransition>());
+
+                                            SendTransitions[i].Last().Add(sendTransition);
+
+                                        }
+                                    }
+                                    else
+                                    {
+                                        //Das Event hat keine SendStates
+                                        IDoTransition doTransition = AddTransition.AddDoTransitionTo(DoStates[i], this.ReceiveStates[indexEvent].Last());
+
+                                        DoTransitions[i].Add(new List<IDoTransition>());
+
+                                        DoTransitions[i].Last().Add(doTransition);
+
                                     }
                                 }
-                                else
+                            }
+
+                        }
+                    }
+                }
+                i++;
+            }
+            WiederholungsEnds = wiederholungsEnds;
+        }
+
+        public void CreateMessages(PASSProcessModel model, List<Subject> subjects, List<List<string>> directlyNextToThisEvent, List<string> allEvents) //8
+        {
+            MessageExchanges = new List<List<IMessageExchange>>();
+
+            int i = 0;
+            foreach (Event e in this.Events)
+            {
+                MessageExchanges.Add(new List<IMessageExchange>());
+
+                int sourceIndex = allEvents.IndexOf(e.Name + "+complete");
+
+                if (!(sourceIndex > directlyNextToThisEvent.Count() - 1))
+                {
+                    if (directlyNextToThisEvent[sourceIndex].Count() > 0)
+                    {
+                        //Event hat Nachfolger
+                        for (int j = 0; j < directlyNextToThisEvent[sourceIndex].Count(); j++)
+                        {
+                            //Durchlaufe alle Nachfolger
+                            if (!this.EventNames.Contains(directlyNextToThisEvent[sourceIndex][j].Replace("xor+","").Replace("+complete","")))
+                            {
+                                //nächstes Event gehört zu einem anderen Subject
+                                
+
+                                //ZielSubject auswählen
+                                int zielIndex = allEvents.IndexOf(directlyNextToThisEvent[sourceIndex][j].Replace("xor+", ""));
+                                foreach (Subject s in subjects)
                                 {
-                                    AddTransition.AddDoTransitionTo(this.DoStates[i], this.DoStates[indexEvent]);
+                                    if (s.EventNames.Contains(allEvents[zielIndex].Replace("+complete", "")) && !this.EventNames.Contains(allEvents[zielIndex].Replace("+complete", "")) && s.EventNames.Contains(directlyNextToThisEvent[sourceIndex][j].Replace("+complete","").Replace("xor+","")))
+                                    {
+                                        if (SendTransitions[i].Count() == 1)
+                                        {
+                                            //Falls nur eine Message gesendet wird, ist die SendTransition eindeutig bestimmbar
+                                            IMessageExchange messageName = new MessageExchange(model.getBaseLayer());
+                                            messageName.setSender(this.fullySpecified);
+                                            messageName.setReceiver(s.fullySpecified);
+
+
+                                            messageName.setMessageType(new MessageSpecification(model.getBaseLayer(), e.Name + " completed", null, null, e.Name + " completed"));
+                                            ISendTransitionCondition messageNameCondition = new SendTransitionCondition(SendTransitions[i][0][0], e.Name + " completed", null, messageName, 0, 0, null, this.fullySpecified, messageName.getMessageType());
+                                            
+                                            MessageExchanges[i].Add(messageName);
+                                        }
+                                        else
+                                        {
+                                            //Falls es mehrere SendTransitionen gibt, muss klar definiert werden, welche Transition zu welchem Subjekt geht
+                                            //Event [i] ist klar und Transition auch [0], fehlt noch der SendState
+                                            //Der sendState muss erstellt worden sein, weil das Next[i]Event ein Event des Subjekts subjects[j] ist
+                                            //Index dieses SendStates herausfinden und bei ? eintragen
+                                            //for (int k = 0; k < SendTransitions[i].Count(); k++)
+                                            //{
+                                                if (s.EventNames.Contains(Next[i][j].Replace("xor+", "").Replace("+complete", "")))
+                                                {
+                                                    IMessageExchange messageName = new MessageExchange(model.getBaseLayer());
+                                                    messageName.setSender(this.fullySpecified);
+                                                    messageName.setReceiver(s.fullySpecified);
+
+
+                                                    messageName.setMessageType(new MessageSpecification(model.getBaseLayer(), e.Name + " completed", null, null, e.Name + " completed"));
+                                                    ISendTransitionCondition messageNameCondition = new SendTransitionCondition(SendTransitions[i][j][0], e.Name + " completed", null, messageName, 0, 0, null, this.fullySpecified, messageName.getMessageType());
+
+                                                    MessageExchanges[i].Add(messageName);
+                                                }
+                                            //}
+                                        }
+                                        
+                                    }
                                 }
+
                             }
                         }
-
-                        
                     }
                 }
                 i++;
             }
         }
+
+        public void InitializeEndStates() //9
+        {
+            EndStates = new List<List<IState>>();
+            StartStates = new List<List<IState>>();
+            
+            int i = 0;
+            foreach (string s in this.EventNames)
+            {
+                EndStates.Add(new List<IState>());
+                StartStates.Add(new List<IState>());
+                if (End[i])
+                {
+                    if (DoEndStates[i].Count() > 0)
+                    {
+                        DoEndStates[i].Last().setIsStateType(IState.StateType.EndState);
+                        IState state = DoEndStates[i].Last();
+                        EndStates[i].Add(state);
+                    }
+
+                    if (ReceiveEndStates[i].Count() > 0)
+                    {
+                        ReceiveEndStates[i].Last().setIsStateType(IState.StateType.EndState);
+                        IState state = ReceiveEndStates[i].Last();
+                        EndStates[i].Add(state);
+                    }
+                }
+
+                if (Start[i])
+                {
+                    //Erster State des Events kann StartState sein 
+                    if (ReceiveStates[i].Count() > 0)
+                    {
+                        this.subjectBehavior.setInitialState(ReceiveStates[i].Last());
+                        IState state = ReceiveStates[i].Last();
+                        StartStates[i].Add(state);
+                    }
+                    else
+                    {
+                        this.subjectBehavior.setInitialState(this.DoStates[i]);
+                        IState state = DoStates[i];
+                        StartStates[i].Add(state);
+                    }
+                }
+                i++;
+            }
+        } 
     }
 }
